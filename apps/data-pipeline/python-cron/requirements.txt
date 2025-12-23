@@ -1,0 +1,6 @@
+dotenv
+polars-lts-cpu
+requests
+pyodbc
+typing
+pytz

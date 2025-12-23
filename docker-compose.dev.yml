@@ -1,0 +1,76 @@
+version: "3.9"
+
+services:
+    backend:
+        container_name: backend-dev
+        build:
+              context: ./apps/backend
+              dockerfile: Dockerfile
+        env_file:
+          - .env
+        volumes:
+          - ./apps/backend:/app
+        ports:
+          - "8000:8000"
+        command: >
+            uvicorn main:app
+            --host 0.0.0.0
+            --port 8000
+            --reload
+            --reload-dir /app
+            --log-level info
+        restart: unless-stopped
+
+    data-pipeline:
+        container_name: data-pipeline-dev
+        build:
+          context: ./apps/data-pipeline
+          dockerfile: Dockerfile
+        env_file:
+          - .env
+        volumes:
+          - ./apps/data-pipeline/python-cron:/app
+        working_dir: /app
+        restart: unless-stopped
+        environment:
+          - SA_USER=${SA_USER}
+          - SA_PASSWORD=${SA_PASSWORD}
+          - STEAM_API_KEY=${STEAM_API_KEY}
+          - AZURE_SQL_CONN_STRING=${AZURE_SQL_CONN_STRING}
+
+    azure-sql:
+      image: mcr.microsoft.com/azure-sql-edge:latest
+      container_name: azure-sql-dev
+      environment:
+        - ACCEPT_EULA=Y
+        - SA_USER=${SA_USER}
+        - SA_PASSWORD=${SA_PASSWORD}
+      env_file:
+        - .env
+      ports:
+        - "1433:1433"
+
+      volumes:
+        - sql_data:/var/opt/mssql
+        - ./apps/data-pipeline/init-db:/docker-entrypoint-initdb.d
+      command: >
+        /bin/bash -c "
+          echo 'Starting SQL Server...'
+          /opt/mssql/bin/sqlservr &
+      
+          SQLSRV_PID=$$!
+      
+          echo 'Waiting for SQL Server to start...'
+          until /opt/mssql-tools/bin/sqlcmd -S localhost -U \"$$SA_USER\" -P \"$$SA_PASSWORD\" -Q 'SELECT 1' &> /dev/null; do
+            sleep 1
+          done
+      
+          echo 'SQL Server is ready, running init script...'
+          /opt/mssql-tools/bin/sqlcmd -S localhost -U \"$$SA_USER\" -P \"$$SA_PASSWORD\" -i /docker-entrypoint-initdb.d/init.sql
+      
+          # Wait on the SQL Server process so container stays alive
+          wait $$SQLSRV_PID
+        "
+
+volumes:
+  sql_data:

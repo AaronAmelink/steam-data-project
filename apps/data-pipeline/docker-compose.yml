@@ -1,0 +1,52 @@
+version: "3.9"
+
+services:
+  sql-edge:
+    image: mcr.microsoft.com/azure-sql-edge:latest
+    container_name: sql-edge
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_USER=${SA_USER}
+      - SA_PASSWORD=${SA_PASSWORD}
+    env_file:
+      - .env
+    ports:
+      - "1433:1433"
+
+    volumes:
+      - sql_data:/var/opt/mssql
+      - ./init-db:/docker-entrypoint-initdb.d
+    command: >
+      /bin/bash -c "
+        echo 'Starting SQL Server...'
+        /opt/mssql/bin/sqlservr &
+    
+        SQLSRV_PID=$$!
+    
+        echo 'Waiting for SQL Server to start...'
+        until /opt/mssql-tools/bin/sqlcmd -S localhost -U \"$$SA_USER\" -P \"$$SA_PASSWORD\" -Q 'SELECT 1' &> /dev/null; do
+          sleep 1
+        done
+    
+        echo 'SQL Server is ready, running init script...'
+        /opt/mssql-tools/bin/sqlcmd -S localhost -U \"$$SA_USER\" -P \"$$SA_PASSWORD\" -i /docker-entrypoint-initdb.d/init.sql
+    
+        # Wait on the SQL Server process so container stays alive
+        wait $$SQLSRV_PID
+      "
+
+  python-cron:
+    build: .
+    container_name: python-cron
+    environment:
+      - SA_USER=${SA_USER}
+      - SA_PASSWORD=${SA_PASSWORD}
+      - STEAM_API_KEY=${STEAM_API_KEY}
+      - AZURE_SQL_CONN_STRING=${AZURE_SQL_CONN_STRING}
+    # Mount the project root to /app inside container
+    volumes:
+      - ./python-cron:/app
+    working_dir: /app
+
+volumes:
+  sql_data:

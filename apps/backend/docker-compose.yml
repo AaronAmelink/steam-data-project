@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+    web:
+        build: .
+        container_name: fastapi_app
+        command: >
+            uvicorn main:app
+            --host 0.0.0.0
+            --port 8000
+            --reload
+            --reload-dir /source
+            --log-level info
+        ports:
+            - "8000:8000"
+        volumes:
+            - ./source:/source
+        env_file:
+            - .env
+volumes:
+    mongo_data:
