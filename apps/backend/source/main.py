@@ -38,5 +38,5 @@ app.add_middleware(
 async def read_root():
     return {
         "app_name": settings.app_name,
-        "local": settings.local,
+        "local_dev": settings.local_dev,
     }
