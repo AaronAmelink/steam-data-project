@@ -1,8 +1,10 @@
 from fastapi import APIRouter
 from utils.config import config
 from steam.SteamClient import SteamClient
+from fastapi.responses import RedirectResponse
 
 router = APIRouter(tags=["auth"], prefix='/auth')
+
 
 @router.get("/login")
 async def login():
@@ -14,4 +16,4 @@ async def login():
     realm = config.BASE_URL
 
     steam_login_url = SteamClient().get_steam_login_url(return_to, realm)
-    return 
+    return RedirectResponse(steam_login_url)

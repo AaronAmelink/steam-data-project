@@ -30,7 +30,8 @@ class SteamClient:
             response.raise_for_status()
             return pl.DataFrame([])
 
-    def get_steam_login_url(self, return_to: str, realm: str) -> str:
+    @classmethod
+    def get_steam_login_url(cls, return_to: str, realm: str) -> str:
         """
         Generates Steam OpenID login URL
         """
@@ -42,9 +43,10 @@ class SteamClient:
             "openid.identity": "http://specs.openid.net/auth/2.0/identifier_select",
             "openid.claimed_id": "http://specs.openid.net/auth/2.0/identifier_select",
         }
-        return f"{self.STEAM_OPENID_URL}?{urlencode(params)}"
+        return f"{cls.STEAM_OPENID_URL}?{urlencode(params)}"
 
-    def verify_steam_openid(self, params: dict) -> str | None:
+    @classmethod
+    def verify_steam_openid(cls, params: dict) -> str | None:
         """
         Verifies the OpenID response and extracts SteamID
         """
@@ -52,7 +54,7 @@ class SteamClient:
         verification_params = dict(params)
         verification_params["openid.mode"] = "check_authentication"
 
-        response = requests.post(self.STEAM_OPENID_URL, data=verification_params)
+        response = requests.post(cls.STEAM_OPENID_URL, data=verification_params)
         response_text = response.text
 
         if "is_valid:true" not in response_text:
