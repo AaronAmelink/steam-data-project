@@ -1,7 +1,7 @@
 import os
 
 
-class Settings:
+class Config:
     def __init__(self):
         for key, value in os.environ.items():
             if value.lower() in ("true", "false"):
@@ -12,4 +12,4 @@ class Settings:
         return getattr(self, key.lower())
 
 
-settings = Settings()
+config = Config()

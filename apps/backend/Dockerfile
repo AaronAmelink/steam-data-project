@@ -6,7 +6,7 @@ ENV PYTHONUNBUFFERED=1
 RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
 
 # Set working directory
-WORKDIR /source
+WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential && \
     rm -rf /var/lib/apt/lists/*

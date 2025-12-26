@@ -5,12 +5,17 @@ from dotenv import load_dotenv
 import pyodbc
 import polars as pl
 
+
 class AzureSQLClient:
     def __init__(self, conn_string=None):
         load_dotenv()
-        self.conn_string = conn_string if conn_string else os.getenv("AZURE_SQL_CONN_STRING")
+        self.conn_string = (
+            conn_string if conn_string else os.getenv("AZURE_SQL_CONN_STRING")
+        )
         if not self.conn_string:
-            raise ValueError("Connection string not provided and AZURE_SQL_CONN_STRING not found in env.")
+            raise ValueError(
+                "Connection string not provided and AZURE_SQL_CONN_STRING not found in env."
+            )
         self.conn = None
         self.cursor = None
         self.autocommit = True

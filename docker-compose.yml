@@ -4,12 +4,13 @@ services:
     backend:
         container_name: backend-dev
         build:
-              context: ./apps/backend
-              dockerfile: Dockerfile
+              context: .
+              dockerfile: ./apps/backend/Dockerfile
         env_file:
           - .env
         volumes:
           - ./apps/backend/source:/app
+          - ./package/python:/app/package/python
         ports:
           - "8000:8000"
         command: >

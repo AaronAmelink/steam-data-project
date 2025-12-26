@@ -5,3 +5,4 @@ pymongo
 pydantic
 bcrypt
 motor
+-e ./package/python
