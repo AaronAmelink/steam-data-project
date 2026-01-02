@@ -1,20 +1,22 @@
 version: "3.9"
 
 services:
-    web:
-        build: .
-        container_name: fastapi_app
+    backend:
+        build:
+            context: ../../../steam-data-project/
+            dockerfile: ./apps/backend/Dockerfile
+        container_name: backend
         command: >
             uvicorn main:app
             --host 0.0.0.0
             --port 8000
             --reload
-            --reload-dir /source
-            --log-level info
+            --reload-dir /app
         ports:
             - "8000:8000"
         volumes:
-            - ./source:/source
+          - ./apps/backend/source:/app
+          - ./package/python:/app/package/python
         env_file:
             - .env
 volumes:

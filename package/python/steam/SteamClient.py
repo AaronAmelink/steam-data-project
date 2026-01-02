@@ -45,8 +45,27 @@ class SteamClient:
         }
         return f"{cls.STEAM_OPENID_URL}?{urlencode(params)}"
 
+    async def get_steam_users(self, ids: list[str]) -> list:
+        """
+        Get steam user data
+        """
+        url = f"{self.BASE_URL}/ISteamUser/GetPlayerSummaries/v2/"
+        params = {
+            'key' : self.api_key,
+            'steamid': ','.joins(ids)
+        }
+        res = await requests.get(url, params=params)
+        return res['response']
+
+    async def get_steam_user(self, id: str) -> dict:
+        """
+        Get a steam user data
+        """
+        res = self.get_steam_users([id])
+        return res[0]
+
     @classmethod
-    def verify_steam_openid(cls, params: dict) -> str | None:
+    async def verify_steam_openid(cls, params: dict) -> str | None:
         """
         Verifies the OpenID response and extracts SteamID
         """
@@ -54,7 +73,7 @@ class SteamClient:
         verification_params = dict(params)
         verification_params["openid.mode"] = "check_authentication"
 
-        response = requests.post(cls.STEAM_OPENID_URL, data=verification_params)
+        response = await requests.post(cls.STEAM_OPENID_URL, data=verification_params)
         response_text = response.text
 
         if "is_valid:true" not in response_text:

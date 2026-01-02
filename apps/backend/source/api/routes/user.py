@@ -19,3 +19,9 @@ async def ping(id, jwt_id: dict = Depends(get_current_user)):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Invalid Request")
 
     return id
+
+@router.get("/{id}")
+async def get_user(id, jwt_id: dict = Depends(get_current_user)):
+    """
+    Get current user details from steam
+    """
