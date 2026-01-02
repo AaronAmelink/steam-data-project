@@ -6,10 +6,10 @@ class Config:
         for key, value in os.environ.items():
             if value.lower() in ("true", "false"):
                 value = value.lower() == "true"
-            setattr(self, key.lower(), value)
+            setattr(self, key.upper(), value)
 
     def __getitem__(self, key):
-        return getattr(self, key.lower())
+        return getattr(self, key.upper())
 
 
 config = Config()

@@ -5,4 +5,7 @@ pymongo
 pydantic
 bcrypt
 motor
--e ./package/python
+requests
+polars
+pyjwt[crypto]
+-e /app/package/python

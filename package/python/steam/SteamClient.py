@@ -1,10 +1,10 @@
 import os
 from dotenv import load_dotenv
-from clients.steam.models.RecentlyPlayedGamesResponse import RecentlyPlayedGamesResponse
+from steam.models.RecentlyPlayedGamesResponse import RecentlyPlayedGamesResponse
 import requests
 import polars as pl
 from urllib.parse import urlencode
-
+import logging
 
 class SteamClient:
     BASE_URL = 'http://api.steampowered.com'

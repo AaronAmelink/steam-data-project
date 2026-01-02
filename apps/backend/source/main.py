@@ -5,7 +5,7 @@ from api import router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from handlers.exception_handlers import setup_exception_handlers
-from utils.config import settings
+from utils.config import config
 
 logging.basicConfig(
     level=logging.INFO,
@@ -16,7 +16,7 @@ logging.basicConfig(
 
 logging.info("Logger initialized")
 
-app = FastAPI(title=settings.app_name, debug=settings.local_dev)
+app = FastAPI(title=config.APP_NAME, debug=config.LOCAL_DEV)
 setup_exception_handlers(app)
 app.include_router(router.api_router)
 
@@ -37,6 +37,6 @@ app.add_middleware(
 @app.get("/")
 async def read_root():
     return {
-        "app_name": settings.app_name,
-        "local_dev": settings.local_dev,
+        "app_name": config.APP_NAME,
+        "local_dev": config.LOCAL_DEV,
     }
