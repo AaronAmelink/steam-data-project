@@ -1,6 +1,7 @@
-class EmailTakenError(Exception):
+
+class AuthorizationError(Exception):
     pass
 
 
-class AuthorizationError(Exception):
+class UserNotFoundError(Exception):
     pass

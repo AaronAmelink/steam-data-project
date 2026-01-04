@@ -1,6 +1,7 @@
-dotenv
-polars-lts-cpu
+python-dotenv
 requests
-pyodbc
-typing
-pytz
+httpx
+aioodbc
+polars-lts-cpu
+asyncio
+-e /app/package/python

@@ -3,7 +3,7 @@ version: "3.9"
 services:
     backend:
         build:
-            context: ../../../steam-data-project/
+            context: ../../
             dockerfile: ./apps/backend/Dockerfile
         container_name: backend
         command: >
@@ -18,6 +18,6 @@ services:
           - ./apps/backend/source:/app
           - ./package/python:/app/package/python
         env_file:
-            - .env
+            - ../../.env
 volumes:
     mongo_data:

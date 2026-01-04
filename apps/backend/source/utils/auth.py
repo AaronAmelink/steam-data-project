@@ -1,3 +1,4 @@
+from models.jwt import AuthedJWT
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
@@ -8,9 +9,10 @@ from utils.config import config
 security = HTTPBearer()
 
 
-def create_jwt(steam_id: str):
+def create_jwt(steam_id: str, user_id: int):
     payload = {
-        "sub": steam_id,
+        "steam_id": str(steam_id),
+        "sub": str(user_id),
         "iat": datetime.utcnow(),
         "exp": datetime.utcnow() + timedelta(minutes=int(config.JWT_EXPIRE_MINUTES))
     }
@@ -19,7 +21,7 @@ def create_jwt(steam_id: str):
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-):
+) -> AuthedJWT:
     token = credentials.credentials
 
     try:
@@ -45,4 +47,4 @@ def get_current_user(
             detail="Token payload invalid",
         )
 
-    return user_id
+    return AuthedJWT(**payload)

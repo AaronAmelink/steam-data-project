@@ -1,18 +1,16 @@
 import logging
-from datetime import datetime
-import polars
-
-from clients.azure.AzureSQLClient import AzureSQLClient
+import asyncio
+from azure.azure_sql_client import AzureSQLClient
 from pipelines.classes.abstract_task import AbstractTask
 from pipelines.utils.log_helper import configure_logger
 from pipelines.utils.status_codes import StatusCode
 
 
 class RemoveOldPlaytime(AbstractTask):
-    def __init__(self):
-        self.sql = AzureSQLClient()
+    def __init__(self, sql: AzureSQLClient):
+        self.sql = sql
 
-    def remove_old_records(self):
+    async def remove_old_records(self):
         """
         Removes all but the most recent historic entry per user/app_id combination.
         """
@@ -37,10 +35,9 @@ class RemoveOldPlaytime(AbstractTask):
         deleted_rows = self.sql.nonquery(query)
         logging.info(f"Removed all but the latest historic record per user/app_id: {deleted_rows}")
 
-
-    def execute(self):
+    async def execute(self):
         logging.info("Starting cleanup of historic playtime data...")
-        self.remove_old_records()
+        await self.remove_old_records()
         logging.info("Historic data cleanup complete.")
 
         return StatusCode.SUCCESS
@@ -48,6 +45,6 @@ class RemoveOldPlaytime(AbstractTask):
 
 if __name__ == "__main__":
     configure_logger()
-
-    pipeline = RemoveOldPlaytime()
-    pipeline.execute()
+    with AzureSQLClient() as sql:
+        pipeline = RemoveOldPlaytime(sql)
+        asyncio.run(pipeline.execute())

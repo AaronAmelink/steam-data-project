@@ -8,12 +8,12 @@ GO
 -- User accounts table
 CREATE TABLE user_accounts (
     id INT IDENTITY(1,1) PRIMARY KEY,
+    steam_id BIGINT NOT NULL,
     name NVARCHAR(255) NOT NULL,
     created_at DATETIME2 DEFAULT SYSDATETIME(),
     paused_at DATETIME2,
     is_active BIT DEFAULT 1,
-    timezone NVARCHAR(50) DEFAULT 'America/Toronto',
-    steam_id NVARCHAR(255) UNIQUE NOT NULL
+    last_log_off BIGINT DEFAULT NULL,
 );
 GO
 
@@ -43,6 +43,7 @@ GO
 -- Optional indexes for faster queries
 CREATE INDEX idx_daily_user_app ON playtime_calculated(user_id, app_id);
 CREATE INDEX idx_forever_user_app ON playtime_forever_historic(user_id, app_id);
+CREATE INDEX idx_user_accounts_steam_id ON user_accounts (steam_id);
 GO
 
 

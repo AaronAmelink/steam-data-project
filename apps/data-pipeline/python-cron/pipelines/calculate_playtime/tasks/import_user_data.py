@@ -1,36 +1,106 @@
 import logging
 from datetime import datetime
-import pytz
-import polars
-
-from clients.azure.AzureSQLClient import AzureSQLClient
-from clients.steam.SteamClient import SteamClient
+from azure.azure_sql_client import AzureSQLClient
+import polars as pl
+from steam.steam_client import SteamClient
 from pipelines.classes.abstract_task import AbstractTask
 from pipelines.utils.log_helper import configure_logger
 from pipelines.utils.status_codes import StatusCode
+import asyncio
 
 
 class ImportUserData(AbstractTask):
-    def __init__(self):
-        self.sql = AzureSQLClient()
+    def __init__(self, sql: AzureSQLClient):
+        self.sql = sql
         self.steamClient = SteamClient()
 
-    def get_users(self):
+    async def get_users(self):
         """Fetch active users for the specified timezone."""
-        users = self.sql.query("""
+        users = await self.sql.query("""
             SELECT 
                 id,
                 steam_id,
-                timezone
-            FROM dbo.user_accounts
+                last_log_off
+            FROM user_accounts
             WHERE is_active = 1
         """)
         return users
 
-    def insert_rows(self, rows):
-        """Upsert rows into playtime_forever_historic."""
-        time = datetime.now()
+    async def check_user_activity(self, users: list[dict]):
+        """
+        Check that users have playtime since last logged
+        do this because we can batch this by up to 100 people,
+        saving up to 99 calls sometimes
+        """
 
+        calls = []
+        for i in range(0, len(users), 100):
+            batch = users[i:i+100]
+            calls.append(self.steamClient.get_steam_users_raw([user['steam_id'] for user in batch]))
+
+        results = await asyncio.gather(*calls)
+        flattended = []
+        for batch in results:
+            flattended.extend(batch)
+        df = pl.DataFrame(flattended)
+
+        steam_to_user = {user['steam_id']: user['id'] for user in users}
+
+        df = df.with_columns([
+            pl.Series('id', [steam_to_user.get(str(sid)) for sid in df['steamid']]),
+            pl.col('lastlogoff').alias('last_log_off'),
+            (pl.col('profilestate') == 1).cast(pl.Int8).alias('is_active')
+        ])
+
+        df = df.with_columns([
+            pl.col('steamid').alias('steam_id')
+        ])
+
+        disable_accounts = [str(account['id']) for account in df.to_dicts() if not account['is_active']]
+        query = f"""
+        UPDATE user_accounts
+        SET is_active = 0
+        WHERE
+            id IN ({','.join(disable_accounts)})
+        """
+
+        await self.sql.nonquery(query)
+
+        db_last_log_off = {user['id']: user['last_log_off'] for user in users}
+        df = df.with_columns([
+                pl.when(pl.col('last_log_off') != pl.col('id').map_dict(db_last_log_off))
+                  .then(True)
+                  .otherwise(False)
+                  .alias('last_log_off_changed')
+        ])
+
+        changed_users = df.filter(pl.col('last_log_off_changed')).to_dicts()
+
+        # Update DB: last_log_off and is_active
+        for user in changed_users:
+            await self.sql.nonquery("""
+                UPDATE user_accounts
+                SET last_log_off = ?
+                WHERE id = ?
+            """, (user['last_log_off'], user['id']))
+
+        return changed_users
+
+    async def insert_rows(self, all_games):
+        """Insert all game rows into SQL in a single batch."""
+        combined_games = pl.concat(all_games)
+        time = datetime.now()
+        values = [
+            (
+                int(row['app_id']),
+                int(row['user_id']),
+                int(row['playtime_forever']),
+                time
+            )
+            for row in combined_games.iter_rows(named=True)
+        ]
+
+        logging.info(f"Inserting {len(values)} rows into playtime_historic in a single batch")
         query = """
             MERGE dbo.playtime_forever_historic AS target
             USING (VALUES (?, ?, ?, ?)) AS source (app_id, user_id, playtime_forever, recorded_at)
@@ -43,41 +113,48 @@ class ImportUserData(AbstractTask):
                 INSERT (app_id, user_id, playtime_forever, recorded_at)
                 VALUES (source.app_id, source.user_id, source.playtime_forever, source.recorded_at);
         """
+        await self.sql.nonquery(query, values)
 
-        values = [
-            (
-                int(row['app_id']),
-                int(row['user_id']),
-                int(row['playtime_forever']),
-                time
-            )
-            for row in rows.iter_rows(named=True)
-        ]
-        logging.info(f"Inserting {len(values)} rows into playtime_historic")
-        self.sql.nonquery(query, values)
-
-    def execute(self):
-        users = self.get_users()
-
-        if users.height == 0:
-            logging.info(f"No users found")
-            return StatusCode.NO_DATA
-
-        for row in users.to_dicts():
+    async def fetch_all_users_games(self, users):
+        """Fetch recently played games for all users in parallel."""
+        async def fetch_user_games(row):
             steam_id = row['steam_id']
-            user_games = self.steamClient.get_recently_played_games(steam_id)
+            user_games = await self.steamClient.get_recently_played_games(steam_id)
             if user_games.height == 0:
                 logging.info(f"No recently played games found for user {steam_id}")
-                continue
-            user_games = user_games.with_columns(
-                polars.lit(row['id']).alias('user_id')
+                return None
+            return user_games.with_columns(
+                pl.lit(row['id']).alias('user_id')
             ).drop('playtime_2weeks')
-            self.insert_rows(user_games)
 
+        user_games_list = await asyncio.gather(*(fetch_user_games(u) for u in users))
+        return [g for g in user_games_list if g is not None]
+
+    async def execute(self):
+        users = await self.get_users()
+
+        if len(users) == 0:
+            logging.info("No users found")
+            return StatusCode.NO_DATA
+
+        changed_users = await self.check_user_activity(users)
+
+        if len(changed_users) == 0:
+            logging.info("No user activity")
+            return StatusCode.NO_DATA
+
+        games = await self.fetch_all_users_games(self, changed_users)
+        if not games:
+            logging.info("No games to insert")
+            return StatusCode.NO_DATA
+
+        await self.insert_rows(games)
         return StatusCode.SUCCESS
+
 
 
 if __name__ == "__main__":
     configure_logger()
-    pipeline = ImportUserData()
-    pipeline.execute()
+    with AzureSQLClient() as sql:
+        pipeline = ImportUserData(sql)
+        asyncio.run(pipeline.execute())

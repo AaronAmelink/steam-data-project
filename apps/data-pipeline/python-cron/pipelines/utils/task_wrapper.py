@@ -1,10 +1,7 @@
 import time
 import logging
-
+import asyncio
 from pipelines.classes.abstract_task import AbstractTask
-import time
-import logging
-
 from pipelines.utils.status_codes import StatusCode
 
 def timed_execute(cls, *args, **kwargs):
@@ -22,7 +19,7 @@ def timed_execute(cls, *args, **kwargs):
 
     try:
         task_instance = cls(*args, **kwargs)
-        result = task_instance.execute()
+        result = asyncio.run(task_instance.execute())
     except Exception as ex:
         logging.error(f"Error during {cls_name}.execute:", exc_info=ex)
         exit(1)

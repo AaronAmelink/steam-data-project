@@ -1,20 +1,18 @@
-import argparse
 import logging
-from datetime import datetime, timedelta
-import polars
-
-from clients.azure.AzureSQLClient import AzureSQLClient
-from clients.steam.SteamClient import SteamClient
+import asyncio
+from azure.azure_sql_client import AzureSQLClient
+from steam.steam_client import SteamClient
 from pipelines.utils.log_helper import configure_logger
 from pipelines.utils.status_codes import StatusCode
 from pipelines.classes.abstract_task import AbstractTask
 
+
 class GetPlaytime(AbstractTask):
-    def __init__(self):
-        self.sql = AzureSQLClient()
+    def __init__(self, sql: AzureSQLClient):
+        self.sql = sql
         self.steamClient = SteamClient()
 
-    def get_insert_playtime_data(self) -> int:
+    async def get_insert_playtime_data(self) -> int:
         # Use CAST(recorded_at AS DATE) to only consider the local day
         query = """
         WITH RankedPlaytime AS (
@@ -63,18 +61,18 @@ class GetPlaytime(AbstractTask):
             recorded_at
         FROM PlaytimeDelta;
         """
-        return self.sql.nonquery(query)
+        return await self.sql.nonquery(query)
 
-    def execute(self):
-        inserts = self.get_insert_playtime_data()
+    async def execute(self):
+        inserts = await self.get_insert_playtime_data()
+        await self.sql.close()
         logging.info(f"Inserted {inserts} daily playtime records successfully.")
 
         return StatusCode.SUCCESS
 
 
-
 if __name__ == "__main__":
     configure_logger()
-
-    pipeline = GetPlaytime()
-    pipeline.execute()
+    with AzureSQLClient() as sql:
+        pipeline = GetPlaytime(sql)
+        asyncio.run(pipeline.execute())

@@ -1,11 +1,10 @@
 fastapi
 uvicorn[standard]
 python-dotenv
-pymongo
 pydantic
 bcrypt
-motor
 requests
-polars
+httpx
+aioodbc
 pyjwt[crypto]
 -e /app/package/python

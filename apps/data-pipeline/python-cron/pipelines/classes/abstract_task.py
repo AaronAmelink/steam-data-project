@@ -10,6 +10,6 @@ class AbstractTask(ABC):
     """
 
     @abstractmethod
-    def execute(self) -> StatusCode:
+    async def execute(self) -> StatusCode:
         """Execute the task and return a StatusCode result."""
         pass
