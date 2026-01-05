@@ -13,7 +13,7 @@ CREATE TABLE user_accounts (
     created_at DATETIME2 DEFAULT SYSDATETIME(),
     paused_at DATETIME2,
     is_active BIT DEFAULT 1,
-    last_log_off BIGINT DEFAULT NULL,
+    last_log_off DATETIME2 DEFAULT NULL,
 );
 GO
 

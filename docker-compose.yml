@@ -25,12 +25,13 @@ services:
     data-pipeline:
         container_name: data-pipeline-dev
         build:
-          context: ./apps/data-pipeline
-          dockerfile: Dockerfile
+          context: .
+          dockerfile: ./apps/data-pipeline/Dockerfile
         env_file:
           - .env
         volumes:
           - ./apps/data-pipeline/python-cron:/app
+          - ./package/python:/app/package/python
         working_dir: /app
         restart: unless-stopped
         environment:

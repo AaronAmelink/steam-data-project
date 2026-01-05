@@ -55,17 +55,21 @@ async def callback(request: Request):
             if user is None:
                 raise Exception("Not sure how we got here tbh, must be issue with steam")
 
+            logging.info(user)
+
             insert = f"""
             INSERT INTO user_accounts
                 (
                     steam_id,
-                    name
+                    name,
+                    last_log_off
                 )
             OUTPUT INSERTED.id
             VALUES
                 (
                     {steam_id},
-                    '{user.name}'
+                    '{user.name}',
+                    {user.last_log_off}
                 )
             """
             res = await sql.query_one(insert)

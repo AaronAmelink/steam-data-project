@@ -1,7 +1,6 @@
 import os
 from typing import Optional, Sequence
 from dotenv import load_dotenv
-import polars as pl
 import aioodbc
 
 
@@ -84,3 +83,7 @@ class AzureSQLClient:
     async def __aenter__(self):
         await self.connect()
         return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self.close()
+        return

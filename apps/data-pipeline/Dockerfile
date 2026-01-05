@@ -24,13 +24,14 @@ RUN curl -sSL https://packages.microsoft.com/keys/microsoft.asc | \
 ENV PATH="$PATH:/opt/mssql-tools18/bin"
 # Set working directory
 WORKDIR /app
+COPY package/python /app/package/python
 
 # Copy and install Python dependencies
-COPY python-cron/requirements.txt /app/requirements.txt
+COPY apps/data-pipeline/python-cron/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir --break-system-packages -r /app/requirements.txt
 
 # Copy crontab
-COPY crontab.txt /etc/cron.d/app-cron
+COPY apps/data-pipeline/crontab.txt /etc/cron.d/app-cron
 
 # Set up cron
 RUN chmod 0644 /etc/cron.d/app-cron && \
@@ -40,7 +41,7 @@ RUN chmod 0644 /etc/cron.d/app-cron && \
 COPY . /app
 
 # Copy entrypoint script
-COPY python-cron/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY apps/data-pipeline/python-cron/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 RUN find . -type f -name "*.sh" -exec chmod +x {} \;
 

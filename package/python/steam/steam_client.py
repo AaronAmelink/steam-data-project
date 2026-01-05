@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from urllib.parse import urlencode
 from steam.models.recently_played_games_response import RecentlyPlayedGamesResponse
 
+
 class SteamClient:
     BASE_URL = "https://api.steampowered.com"
     STEAM_OPENID_URL = "https://steamcommunity.com/openid/login"
@@ -92,7 +93,7 @@ class SteamClient:
         url = f"{self.BASE_URL}/ISteamUser/GetPlayerSummaries/v2/"
         params = {
             "key": self.api_key,
-            "steamids": ",".join(ids),
+            "steamids": ",".join([str(id) for id in ids]),
         }
 
         response = await self._request("GET", url, params=params)
@@ -100,7 +101,7 @@ class SteamClient:
         return players
 
     async def get_steam_users(self, ids: list[str]) -> list[SteamUser]:
-        players = self.get_steam_users_raw(ids)
+        players = await self.get_steam_users_raw(ids)
         return [SteamUser(**p) for p in players]
 
     async def get_steam_user(self, steam_id: str) -> SteamUser | None:

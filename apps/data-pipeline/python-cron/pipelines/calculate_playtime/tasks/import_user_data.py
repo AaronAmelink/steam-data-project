@@ -32,6 +32,9 @@ class ImportUserData(AbstractTask):
         do this because we can batch this by up to 100 people,
         saving up to 99 calls sometimes
         """
+        # last log off is a misleading name
+        # per steam docs:
+        # The last time the user was online, in unix time.
 
         calls = []
         for i in range(0, len(users), 100):
@@ -48,8 +51,8 @@ class ImportUserData(AbstractTask):
 
         df = df.with_columns([
             pl.Series('id', [steam_to_user.get(str(sid)) for sid in df['steamid']]),
-            pl.col('lastlogoff').alias('last_log_off'),
-            (pl.col('profilestate') == 1).cast(pl.Int8).alias('is_active')
+            (pl.col('profilestate') == 1).cast(pl.Int8).alias('is_active'),
+            pl.from_epoch("lastlogoff", time_unit="s").alias("last_log_off")
         ])
 
         df = df.with_columns([
@@ -57,22 +60,31 @@ class ImportUserData(AbstractTask):
         ])
 
         disable_accounts = [str(account['id']) for account in df.to_dicts() if not account['is_active']]
-        query = f"""
-        UPDATE user_accounts
-        SET is_active = 0
-        WHERE
-            id IN ({','.join(disable_accounts)})
-        """
+        if len(disable_accounts) != 0:
+            query = f"""
+            UPDATE user_accounts
+            SET is_active = 0
+            WHERE
+                id IN ({','.join(disable_accounts)})
+            """
 
-        await self.sql.nonquery(query)
+            await self.sql.nonquery(query)
+
+        logging.info(users)
 
         db_last_log_off = {user['id']: user['last_log_off'] for user in users}
-        df = df.with_columns([
-                pl.when(pl.col('last_log_off') != pl.col('id').map_dict(db_last_log_off))
-                  .then(True)
-                  .otherwise(False)
-                  .alias('last_log_off_changed')
-        ])
+
+        df = df.with_columns(
+            pl.col("id")
+            .map_elements(lambda x: db_last_log_off.get(x))
+            .alias("db_last_log_off")
+        )
+
+        df = df.with_columns(
+            (pl.col("last_log_off") != pl.col("db_last_log_off"))
+            .fill_null(False)
+            .alias("last_log_off_changed")
+        )
 
         changed_users = df.filter(pl.col('last_log_off_changed')).to_dicts()
 
