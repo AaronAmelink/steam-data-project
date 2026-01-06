@@ -2,6 +2,9 @@ from azure.azure_sql_client import AzureSQLClient
 from fastapi import APIRouter, Request, HTTPException
 from utils.config import config
 from steam.steam_client import SteamClient
+from steam.models.steam_user import SteamUser
+from models.user import User
+from handlers.user_handler import UserHandler
 from fastapi.responses import RedirectResponse
 import logging
 from utils.auth import create_jwt
@@ -37,46 +40,17 @@ async def callback(request: Request):
         raise HTTPException(status_code=401, detail="Steam authentication failed")
 
     # we want to check if user exists in our db
-    async with AzureSQLClient() as sql:
-        query = f"""
-        SELECT
-            id
-        FROM user_accounts
-        WHERE
-            steam_id = {steam_id}
-        """
-
-        id = await sql.query_one(query)
-        if id:
-            id = id['id']
+    async with UserHandler() as user_handler:
+        steam_client = SteamClient()
+        user: User = await user_handler.get_user_by_steam_id(steam_id)
+        if user:
+            id = user.id
         else:
-            steam = SteamClient()
-            user = await steam.get_steam_user(steam_id)
+            user: SteamUser = await steam_client.get_steam_user(steam_id)
             if user is None:
                 raise Exception("Not sure how we got here tbh, must be issue with steam")
 
-            logging.info(user)
-
-            insert = f"""
-            INSERT INTO user_accounts
-                (
-                    steam_id,
-                    name
-                )
-            OUTPUT INSERTED.id
-            VALUES
-                (
-                    {steam_id},
-                    '{user.name}'
-                )
-            """
-            res = await sql.query_one(insert)
-            logging.info(res)
-
-            if not res['id']:
-                raise Exception("could not insert new user")
-
-            id = res['id']
+            id = await user_handler.create_user_from_steam(user)
 
     token = create_jwt(steam_id, id)
     return {"access_token": token, "token_type": "bearer"}

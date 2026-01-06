@@ -12,4 +12,3 @@ class User(BaseModel):
     created_at: datetime
     paused_at: Optional[datetime]
     is_active: bool
-    last_log_off: int
