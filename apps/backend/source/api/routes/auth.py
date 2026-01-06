@@ -61,15 +61,13 @@ async def callback(request: Request):
             INSERT INTO user_accounts
                 (
                     steam_id,
-                    name,
-                    last_log_off
+                    name
                 )
             OUTPUT INSERTED.id
             VALUES
                 (
                     {steam_id},
-                    '{user.name}',
-                    {user.last_log_off}
+                    '{user.name}'
                 )
             """
             res = await sql.query_one(insert)
