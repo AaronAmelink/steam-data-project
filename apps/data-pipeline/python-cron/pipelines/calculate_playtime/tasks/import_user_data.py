@@ -19,7 +19,7 @@ class ImportUserData(AbstractTask):
         users = await self.sql.query("""
             SELECT 
                 id,
-                steam_id,
+                steam_id
                 last_log_off
             FROM user_accounts
             WHERE is_active = 1
@@ -155,7 +155,7 @@ class ImportUserData(AbstractTask):
         #     logging.info("No user activity")
         #     return StatusCode.NO_DATA
 
-        games = await self.fetch_all_users_games(self, users)
+        games = await self.fetch_all_users_games(users)
         if not games:
             logging.info("No games to insert")
             return StatusCode.NO_DATA
@@ -167,6 +167,6 @@ class ImportUserData(AbstractTask):
 
 if __name__ == "__main__":
     configure_logger()
-    with AzureSQLClient() as sql:
+    async with AzureSQLClient() as sql:
         pipeline = ImportUserData(sql)
         asyncio.run(pipeline.execute())
