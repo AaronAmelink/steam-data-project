@@ -149,13 +149,13 @@ class ImportUserData(AbstractTask):
             logging.info("No users found")
             return StatusCode.NO_DATA
 
-        changed_users = await self.check_user_activity(users)
+        # changed_users = await self.check_user_activity(users)
 
-        if len(changed_users) == 0:
-            logging.info("No user activity")
-            return StatusCode.NO_DATA
+        # if len(changed_users) == 0:
+        #     logging.info("No user activity")
+        #     return StatusCode.NO_DATA
 
-        games = await self.fetch_all_users_games(self, changed_users)
+        games = await self.fetch_all_users_games(self, users)
         if not games:
             logging.info("No games to insert")
             return StatusCode.NO_DATA
