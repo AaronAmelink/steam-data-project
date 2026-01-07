@@ -86,7 +86,7 @@ class SteamClient:
         games = response.json().get("response", {}).get("games", [])
 
         return pl.DataFrame(
-            [RecentlyPlayedGamesResponse.from_dict(game) for game in games]
+            [RecentlyPlayedGamesResponse(**game) for game in games]
         )
 
     async def get_steam_users_raw(self, ids: list[str]) -> list[dict]:

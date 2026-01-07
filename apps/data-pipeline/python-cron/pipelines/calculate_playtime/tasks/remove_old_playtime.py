@@ -32,7 +32,7 @@ class RemoveOldPlaytime(AbstractTask):
             WHERE rn > 1
         );
         """
-        deleted_rows = self.sql.nonquery(query)
+        deleted_rows = await self.sql.nonquery(query)
         logging.info(f"Removed all but the latest historic record per user/app_id: {deleted_rows}")
 
     async def execute(self):

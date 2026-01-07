@@ -1,13 +1,10 @@
 import logging
 import os
 import sys
+from datetime import datetime
 
-LOG_DIRECTORY = "/app/log/"
+LOG_DIRECTORY = f"/app/log/{datetime.now().year}/{datetime.now().month}/{datetime.now().day}/"
 
-LOG_MAP = {
-    'manual': 'manual.log',
-    'cron': 'cron.log',
-}
 os.makedirs(LOG_DIRECTORY, exist_ok=True)
 # Clear existing handlers (optional, useful if script is reloaded in some environments)
 for handler in logging.root.handlers[:]:
@@ -17,7 +14,7 @@ def configure_logger(name: str | None = None) -> logging.Logger:
     """Configure and return a logger for the given name."""
     if name is None:
         name = 'cron' if '--cron' in sys.argv else 'manual'
-    log_file = LOG_DIRECTORY + LOG_MAP.get(name)
+    log_file = LOG_DIRECTORY + name + '.log'
 
     logging.basicConfig(
         level=logging.INFO,

@@ -19,7 +19,7 @@ class ImportUserData(AbstractTask):
         users = await self.sql.query("""
             SELECT 
                 id,
-                steam_id
+                steam_id,
                 last_log_off
             FROM user_accounts
             WHERE is_active = 1
@@ -128,6 +128,7 @@ class ImportUserData(AbstractTask):
         await self.sql.nonquery(query, values)
 
     async def fetch_all_users_games(self, users):
+        logging.info(users)
         """Fetch recently played games for all users in parallel."""
         async def fetch_user_games(row):
             steam_id = row['steam_id']
@@ -167,6 +168,6 @@ class ImportUserData(AbstractTask):
 
 if __name__ == "__main__":
     configure_logger()
-    async with AzureSQLClient() as sql:
+    with AzureSQLClient() as sql:
         pipeline = ImportUserData(sql)
         asyncio.run(pipeline.execute())
