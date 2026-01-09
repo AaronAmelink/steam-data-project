@@ -74,6 +74,10 @@ class SteamClient:
     # Steam Web API
     # --------------------------------------------------
 
+    @classmethod
+    def map_img_icon_hash_to_url(cls, app_id:str, hash:str) -> str:
+        return f"http://media.steampowered.com/steamcommunity/public/images/apps/{app_id}/{hash}.jpg"
+
     async def get_recently_played_games(self, id64: str) -> pl.DataFrame:
         url = f"{self.BASE_URL}/IPlayerService/GetRecentlyPlayedGames/v1/"
         params = {
@@ -85,9 +89,7 @@ class SteamClient:
         response = await self._request("GET", url, params=params)
         games = response.json().get("response", {}).get("games", [])
 
-        return pl.DataFrame(
-            [RecentlyPlayedGamesResponse(**game) for game in games]
-        )
+        return pl.DataFrame(games).rename({'appid': 'app_id'})
 
     async def get_steam_users_raw(self, ids: list[str]) -> list[dict]:
         url = f"{self.BASE_URL}/ISteamUser/GetPlayerSummaries/v2/"

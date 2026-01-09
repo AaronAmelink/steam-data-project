@@ -127,7 +127,7 @@ class ImportUserData(AbstractTask):
         """
         await self.sql.nonquery(query, values)
 
-    async def fetch_all_users_games(self, users):
+    async def fetch_all_users_games(self, users) -> pl.DataFrame:
         logging.info(users)
         """Fetch recently played games for all users in parallel."""
         async def fetch_user_games(row):
@@ -141,7 +141,38 @@ class ImportUserData(AbstractTask):
             ).drop('playtime_2weeks')
 
         user_games_list = await asyncio.gather(*(fetch_user_games(u) for u in users))
-        return [g for g in user_games_list if g is not None]
+        return pl.concat(user_games_list)
+
+    async def insert_apps(self, user_data: pl.DataFrame) -> None:
+        """
+        insert the game ids
+        """
+        # want to select distinct app ids
+        df = user_data.unique(subset='app_id')
+        df = df.with_columns(
+            pl.struct(['app_id', 'img_icon_url'])
+                .map_elements(lambda s: SteamClient.map_img_icon_hash_to_url(s['app_id'], s['img_icon_url']))
+                .alias('img_url')
+        )
+
+        values = [
+            (
+                int(row['app_id']),
+                row['name'],
+                row['img_url'],
+                int(row['app_id'])
+            )
+            for row in df.iter_rows(named=True)
+        ]
+
+        query = """
+        SELECT ?, ?, ?
+        WHERE NOT EXISTS (
+            SELECT 1 FROM dbo.steam_apps WHERE app_id = ?
+        );
+        """
+
+        missing = await self.sql.query(query, values)
 
     async def execute(self):
         users = await self.get_users()
@@ -161,6 +192,7 @@ class ImportUserData(AbstractTask):
             logging.info("No games to insert")
             return StatusCode.NO_DATA
 
+        await self.insert_apps(games)
         await self.insert_rows(games)
         return StatusCode.SUCCESS
 

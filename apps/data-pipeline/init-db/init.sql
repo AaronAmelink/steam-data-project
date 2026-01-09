@@ -17,6 +17,15 @@ CREATE TABLE user_accounts (
 );
 GO
 
+CREATE TABLE steam_apps (
+  app_id BIGINT NOT NULL,
+  name NVARCHAR(255) NOT NULL,
+  img_url NVARCHAR(255)
+);
+
+CREATE UNIQUE NONCLUSTERED INDEX UX_steam_apps_id ON dbo.steam_apps (app_id);
+GO
+
 -- Daily playtime table
 CREATE TABLE playtime_calculated (
     id INT IDENTITY(1,1) PRIMARY KEY,
@@ -25,7 +34,8 @@ CREATE TABLE playtime_calculated (
     recorded_at DATETIME2 DEFAULT SYSDATETIME(),
     user_id INT NOT NULL,
     CONSTRAINT fk_user_daily FOREIGN KEY (user_id) REFERENCES user_accounts(id),
-    CONSTRAINT uq_user_app_date UNIQUE (user_id, app_id, recorded_at)
+    CONSTRAINT uq_user_app_date UNIQUE (user_id, app_id, recorded_at),
+    CONSTRAINT fk_playtime_app_id FOREIGN KEY (app_id) REFERENCES steam_apps(app_id)
 );
 GO
 
@@ -36,7 +46,8 @@ CREATE TABLE playtime_forever_historic (
    playtime_forever INT NOT NULL,
    recorded_at DATETIME2 DEFAULT SYSDATETIME(),
    user_id INT NOT NULL,
-   CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES user_accounts(id)
+   CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES user_accounts(id),
+   CONSTRAINT fk_playtime_app_id FOREIGN KEY (app_id) REFERENCES steam_apps(app_id)
 );
 GO
 
